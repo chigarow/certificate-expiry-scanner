@@ -3,7 +3,7 @@ import datetime
 import argparse
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
-from zoneinfo import ZoneInfo  # Add this import
+from zoneinfo import ZoneInfo
 
 def check_certificate_expiry(cert_path):
     """
