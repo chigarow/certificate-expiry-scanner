@@ -19,12 +19,18 @@ def check_certificate_expiry(cert_path):
     try:
         with open(cert_path, 'rb') as f:
             cert_data = f.read()
-            
-        # The cryptography library can handle both PEM and DER formats.
-        # It will raise a ValueError if the format is not recognized.
-        cert = x509.load_pem_x509_certificate(cert_data, default_backend())
         
-        expiration_date = cert.not_valid_after_utc
+        # Try PEM first, then DER if PEM fails
+        try:
+            cert = x509.load_pem_x509_certificate(cert_data, default_backend())
+        except ValueError:
+            cert = x509.load_der_x509_certificate(cert_data, default_backend())
+        
+        # Use the correct attribute
+        expiration_date = cert.not_valid_after
+        # Ensure timezone awareness for comparison
+        if expiration_date.tzinfo is None:
+            expiration_date = expiration_date.replace(tzinfo=datetime.timezone.utc)
         now = datetime.datetime.now(datetime.timezone.utc)
         time_until_expiry = expiration_date - now
 
@@ -34,11 +40,8 @@ def check_certificate_expiry(cert_path):
             return "EXPIRES SOON", expiration_date
         else:
             return "VALID", expiration_date
-            
+
     except ValueError:
-        # This error is often raised for files that are not valid certificates
-        # or are password-protected without providing a password.
-        # We can safely ignore these files.
         return None, None
     except Exception as e:
         print(f"Error processing {os.path.basename(cert_path)}: {e}")
